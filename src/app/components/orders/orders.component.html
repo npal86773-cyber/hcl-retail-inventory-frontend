@@ -1,0 +1,203 @@
+<div class="orders-page">
+  <!-- Breadcrumbs & Header -->
+  <div class="breadcrumbs">
+    <a routerLink="/dashboard">Home</a>
+    <span class="separator">/</span>
+    <span class="current">Retail Orders & Fulfillment</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Orders & Shipments</h1>
+      <p class="page-subtitle">Track wholesale shipments, client order fulfillment, and delivery timelines</p>
+    </div>
+    <div class="order-metrics">
+      <div class="metric-pill">
+        <span class="pill-label">Total Volume:</span>
+        <b>{{ totalOrdersCount }} Orders</b>
+      </div>
+      <div class="metric-pill highlight">
+        <span class="pill-label">Revenue:</span>
+        <b>₹{{ totalOrdersRevenue | number:'1.2-2' }}</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Card -->
+  <div class="filter-card card">
+    <div class="filter-toolbar">
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          class="form-control search-input"
+          placeholder="Search by Order ID, customer name, or hub..."
+          [(ngModel)]="searchTerm"
+        />
+        <button *ngIf="searchTerm" (click)="searchTerm = ''" class="clear-btn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="filter-selects">
+        <select class="form-select filter-select" [(ngModel)]="selectedStatus">
+          <option value="All">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Processing">Processing</option>
+          <option value="Packed">Packed</option>
+          <option value="Shipped">Shipped</option>
+          <option value="Delivered">Delivered</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders Table -->
+  <div class="table-responsive card">
+    <table class="enterprise-table">
+      <thead>
+        <tr>
+          <th>Order Number</th>
+          <th>Customer</th>
+          <th>Order Date</th>
+          <th>Dispatched Hub</th>
+          <th>Items Ordered</th>
+          <th>Total (INR)</th>
+          <th>Fulfillment Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let ord of filteredOrders">
+          <td>
+            <code>{{ ord.orderNumber }}</code>
+          </td>
+          <td>
+            <b>{{ ord.customerName }}</b>
+            <div style="font-size: 11px; color: var(--color-text-muted);">{{ ord.customerEmail }}</div>
+          </td>
+          <td>{{ ord.orderDate }}</td>
+          <td>{{ ord.warehouse }}</td>
+          <td>
+            <span class="badge-count">{{ ord.itemCount }} units</span>
+          </td>
+          <td>
+            <b>₹{{ ord.totalAmount | number:'1.2-2' }}</b>
+          </td>
+          <td>
+            <span
+              class="status-badge"
+              [class.status-in-stock]="ord.status === 'Delivered'"
+              [class.status-info]="ord.status === 'Shipped' || ord.status === 'Packed'"
+              [class.status-low-stock]="ord.status === 'Processing' || ord.status === 'Confirmed'"
+              [class.status-neutral]="ord.status === 'Pending'"
+            >
+              <span class="material-symbols-outlined">
+                {{ ord.status === 'Delivered' ? 'check_circle' : (ord.status === 'Shipped' ? 'local_shipping' : 'schedule') }}
+              </span>
+              {{ ord.status }}
+            </span>
+          </td>
+          <td>
+            <button type="button" class="btn btn-outline btn-sm" (click)="openOrderDetails(ord)">
+              <span class="material-symbols-outlined">timeline</span>
+              Track Order
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Order Details with Timeline Modal -->
+  <div *ngIf="selectedOrder" class="modal-backdrop" (click)="closeOrderDetails()">
+    <div class="modal-dialog modal-dialog-large" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">
+            <span class="material-symbols-outlined">receipt_long</span>
+            Order Details: {{ selectedOrder.orderNumber }}
+          </h2>
+          <div style="font-size: 12px; color: var(--color-text-muted); margin-top: 2px;">
+            Placed on {{ selectedOrder.orderDate }} | Assigned to {{ selectedOrder.warehouse }}
+          </div>
+        </div>
+        <button type="button" class="btn btn-icon-only btn-secondary" (click)="closeOrderDetails()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Visual Timeline -->
+        <div class="timeline-container">
+          <div class="timeline-track">
+            <div
+              *ngFor="let step of statusOrder"
+              class="timeline-step"
+              [class.completed]="isStepCompleted(selectedOrder.status, step)"
+              [class.active]="isStepActive(selectedOrder.status, step)"
+            >
+              <div class="step-indicator">
+                <span class="material-symbols-outlined step-icon">
+                  {{ isStepCompleted(selectedOrder.status, step) ? 'check' : 'circle' }}
+                </span>
+              </div>
+              <span class="step-label">{{ step }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Information Summary -->
+        <div class="order-summary-grid">
+          <div class="summary-box">
+            <span class="box-label">Customer Info</span>
+            <b>{{ selectedOrder.customerName }}</b>
+            <div style="font-size: 12px; color: var(--color-text-muted);">{{ selectedOrder.customerEmail }}</div>
+          </div>
+          <div class="summary-box">
+            <span class="box-label">Payment Terms</span>
+            <b>{{ selectedOrder.paymentMethod }}</b>
+            <div style="font-size: 12px; color: #15803d;">Invoice Verified</div>
+          </div>
+          <div class="summary-box">
+            <span class="box-label">Total Payable</span>
+            <b style="font-size: 17px; color: #1e40af;">₹{{ selectedOrder.totalAmount | number:'1.2-2' }}</b>
+            <div style="font-size: 12px; color: var(--color-text-muted);">Includes tax & logistics</div>
+          </div>
+        </div>
+
+        <!-- Line Items Table -->
+        <h4 style="font-size: 14px; margin-bottom: 10px; color: #334155;">Ordered Catalog Line Items</h4>
+        <div class="table-responsive">
+          <table class="enterprise-table">
+            <thead>
+              <tr>
+                <th>Item / SKU</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Line Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of selectedOrder.items">
+                <td>
+                  <b>{{ item.productName }}</b>
+                  <div style="font-size: 11px; color: var(--color-text-muted);">SKU: {{ item.sku }}</div>
+                </td>
+                <td>{{ item.quantity }}</td>
+                <td>₹{{ item.unitPrice | number:'1.2-2' }}</td>
+                <td><b>₹{{ (item.quantity * item.unitPrice) | number:'1.2-2' }}</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeOrderDetails()">Close</button>
+        <button type="button" class="btn btn-primary" (click)="closeOrderDetails()">Print Pick List</button>
+      </div>
+    </div>
+  </div>
+</div>

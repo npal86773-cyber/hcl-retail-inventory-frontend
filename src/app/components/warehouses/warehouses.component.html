@@ -1,0 +1,283 @@
+<div class="warehouse-page">
+  <!-- Breadcrumbs & Header -->
+  <div class="breadcrumbs">
+    <a routerLink="/dashboard">Home</a>
+    <span class="separator">/</span>
+    <span class="current">Warehouses & Logistics</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Warehouse Network</h1>
+      <p class="page-subtitle">Centralized multi-hub inventory allocation, stock capacity, and logistics centers</p>
+    </div>
+    <div class="header-actions">
+      <div class="view-switch">
+        <button
+          type="button"
+          class="switch-btn"
+          [class.active]="viewMode === 'grid'"
+          (click)="viewMode = 'grid'"
+          title="Grid View"
+        >
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+        <button
+          type="button"
+          class="switch-btn"
+          [class.active]="viewMode === 'table'"
+          (click)="viewMode = 'table'"
+          title="Table View"
+        >
+          <span class="material-symbols-outlined">view_list</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metric Overview Cards -->
+  <div class="kpi-row">
+    <div class="kpi-mini-card">
+      <div class="kpi-icon-wrap" style="background-color: #eff6ff; color: #1e40af;">
+        <span class="material-symbols-outlined">warehouse</span>
+      </div>
+      <div>
+        <div class="kpi-value">{{ warehouses.length }}</div>
+        <div class="kpi-label">Active Hubs</div>
+      </div>
+    </div>
+
+    <div class="kpi-mini-card">
+      <div class="kpi-icon-wrap" style="background-color: #f0fdf4; color: #15803d;">
+        <span class="material-symbols-outlined">inventory_2</span>
+      </div>
+      <div>
+        <div class="kpi-value">{{ totalUnitsAll | number }}</div>
+        <div class="kpi-label">Stored Units</div>
+      </div>
+    </div>
+
+    <div class="kpi-mini-card">
+      <div class="kpi-icon-wrap" style="background-color: #fdf4ff; color: #a21caf;">
+        <span class="material-symbols-outlined">pie_chart</span>
+      </div>
+      <div>
+        <div class="kpi-value">{{ averageUtilization }}%</div>
+        <div class="kpi-label">Avg. Capacity Used</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters & Search Toolbar -->
+  <div class="filter-card card">
+    <div class="filter-toolbar">
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          class="form-control search-input"
+          placeholder="Search by hub name, code, or city..."
+          [(ngModel)]="searchTerm"
+        />
+        <button *ngIf="searchTerm" (click)="searchTerm = ''" class="clear-btn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="filter-selects">
+        <select class="form-select filter-select" [(ngModel)]="selectedStatus">
+          <option value="All">All Statuses</option>
+          <option value="Operational">Operational</option>
+          <option value="Near Capacity">Near Capacity</option>
+          <option value="Maintenance">Maintenance</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid View -->
+  <div *ngIf="viewMode === 'grid'" class="warehouse-grid">
+    <div *ngFor="let wh of filteredWarehouses" class="warehouse-card card">
+      <div class="wh-card-header">
+        <div class="wh-icon-badge">
+          <span class="material-symbols-outlined">domain</span>
+        </div>
+        <div class="wh-title-wrap">
+          <h3 class="wh-name">{{ wh.name }}</h3>
+          <span class="wh-code"><code>{{ wh.code }}</code></span>
+        </div>
+        <span
+          class="status-badge"
+          [class.status-in-stock]="wh.status === 'Operational'"
+          [class.status-low-stock]="wh.status === 'Near Capacity'"
+          [class.status-neutral]="wh.status === 'Maintenance'"
+        >
+          <span class="material-symbols-outlined">
+            {{ wh.status === 'Operational' ? 'check_circle' : (wh.status === 'Near Capacity' ? 'warning' : 'build') }}
+          </span>
+          {{ wh.status }}
+        </span>
+      </div>
+
+      <div class="wh-card-body">
+        <div class="wh-info-row">
+          <span class="material-symbols-outlined info-icon">location_on</span>
+          <span>{{ wh.location }}</span>
+        </div>
+        <div class="wh-info-row">
+          <span class="material-symbols-outlined info-icon">person</span>
+          <span>Manager: <b>{{ wh.manager }}</b></span>
+        </div>
+
+        <div class="wh-capacity-section">
+          <div class="capacity-header">
+            <span>Capacity Utilization</span>
+            <b>{{ wh.totalUnits }} / {{ wh.capacityUnits }} units ({{ (wh.totalUnits / wh.capacityUnits * 100) | number:'1.0-0' }}%)</b>
+          </div>
+          <div class="progress-bar-bg">
+            <div
+              class="progress-bar-fill"
+              [style.width.%]="(wh.totalUnits / wh.capacityUnits * 100)"
+              [class.bg-warning]="wh.totalUnits / wh.capacityUnits > 0.8"
+              [class.bg-danger]="wh.totalUnits / wh.capacityUnits >= 0.95"
+            ></div>
+          </div>
+        </div>
+
+        <div class="wh-stats-grid">
+          <div class="wh-stat">
+            <span class="wh-stat-label">Product SKUs</span>
+            <span class="wh-stat-value">{{ wh.productsCount }}</span>
+          </div>
+          <div class="wh-stat">
+            <span class="wh-stat-label">Total Inventory</span>
+            <span class="wh-stat-value">{{ wh.totalUnits }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wh-card-footer">
+        <button type="button" class="btn btn-outline btn-sm w-100" (click)="openDetails(wh)">
+          <span class="material-symbols-outlined">visibility</span>
+          View Hub Logistics
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'" class="table-responsive card">
+    <table class="enterprise-table">
+      <thead>
+        <tr>
+          <th>Hub Code</th>
+          <th>Warehouse Name</th>
+          <th>Location</th>
+          <th>Manager</th>
+          <th>Active SKUs</th>
+          <th>Inventory Units</th>
+          <th>Capacity %</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let wh of filteredWarehouses">
+          <td><code>{{ wh.code }}</code></td>
+          <td><b>{{ wh.name }}</b></td>
+          <td>{{ wh.location }}</td>
+          <td>{{ wh.manager }}</td>
+          <td>{{ wh.productsCount }}</td>
+          <td><b>{{ wh.totalUnits }}</b> / {{ wh.capacityUnits }}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="progress-bar-bg" style="width: 80px; height: 6px;">
+                <div
+                  class="progress-bar-fill"
+                  [style.width.%]="(wh.totalUnits / wh.capacityUnits * 100)"
+                ></div>
+              </div>
+              <span style="font-size: 12px;">{{ (wh.totalUnits / wh.capacityUnits * 100) | number:'1.0-0' }}%</span>
+            </div>
+          </td>
+          <td>
+            <span
+              class="status-badge"
+              [class.status-in-stock]="wh.status === 'Operational'"
+              [class.status-low-stock]="wh.status === 'Near Capacity'"
+            >
+              {{ wh.status }}
+            </span>
+          </td>
+          <td>
+            <button type="button" class="btn btn-outline btn-sm" (click)="openDetails(wh)">
+              Details
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="filteredWarehouses.length === 0" class="empty-state card">
+    <span class="material-symbols-outlined empty-icon">warehouse</span>
+    <h3>No Warehouses Found</h3>
+    <p>No distribution centers match your search criteria. Try modifying your filter.</p>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="searchTerm = ''; selectedStatus = 'All'">
+      Clear Filters
+    </button>
+  </div>
+
+  <!-- Warehouse Details Modal -->
+  <div *ngIf="selectedWarehouse" class="modal-backdrop" (click)="closeDetails()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <span class="material-symbols-outlined">warehouse</span>
+          {{ selectedWarehouse.name }}
+        </h2>
+        <button type="button" class="btn btn-icon-only btn-secondary" (click)="closeDetails()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Warehouse Code</span>
+            <span class="detail-value"><code>{{ selectedWarehouse.code }}</code></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+              <span class="status-badge status-in-stock">{{ selectedWarehouse.status }}</span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Hub Manager</span>
+            <span class="detail-value">{{ selectedWarehouse.manager }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Contact Dispatch</span>
+            <span class="detail-value">{{ selectedWarehouse.phone }}</span>
+          </div>
+          <div class="detail-item" style="grid-column: span 2;">
+            <span class="detail-label">Physical Address</span>
+            <span class="detail-value">{{ selectedWarehouse.location }}</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <h4 style="font-size: 14px; margin-bottom: 8px;">Warehouse Operations</h4>
+          <p style="color: var(--color-text-muted); font-size: 13px; line-height: 1.6;">
+            This facility operates 24/7 barcode scanning, temperature-controlled electronics storage, and automated inventory reconciliation linked directly with the Spring Boot centralized retail server.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDetails()">Close</button>
+        <a routerLink="/inventory" class="btn btn-primary" (click)="closeDetails()">View Stored Inventory</a>
+      </div>
+    </div>
+  </div>
+</div>

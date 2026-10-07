@@ -1,0 +1,371 @@
+<div class="dashboard-page">
+  <!-- Breadcrumbs & Header -->
+  <div class="breadcrumbs">
+    <span>ProRetail HQ</span>
+    <span class="separator">/</span>
+    <span class="current">Executive Dashboard</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Retail Operations Dashboard</h1>
+      <p class="page-subtitle">Real-time inventory levels, multi-hub logistics, and order fulfillment status</p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/inventory" class="btn btn-primary">
+        <span class="material-symbols-outlined">add_box</span>
+        Manage Catalog
+      </a>
+      <a routerLink="/warehouses" class="btn btn-outline">
+        <span class="material-symbols-outlined">warehouse</span>
+        Hub Network
+      </a>
+    </div>
+  </div>
+
+  <!-- 6 Attractive Summary Cards -->
+  <div class="kpi-grid">
+    <!-- Card 1: Total Products -->
+    <div class="card kpi-card border-blue">
+      <div class="kpi-header">
+        <span class="kpi-title">Total Products</span>
+        <div class="kpi-icon-pill bg-blue-subtle">
+          <span class="material-symbols-outlined text-blue">inventory_2</span>
+        </div>
+      </div>
+      <div class="kpi-number">{{ totalProducts }}</div>
+      <div class="kpi-footer">
+        <span class="trend-pill trend-up">
+          <span class="material-symbols-outlined">trending_up</span>
+          Active Catalog
+        </span>
+        <span class="kpi-hint">Unique SKUs</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Total Inventory -->
+    <div class="card kpi-card border-indigo">
+      <div class="kpi-header">
+        <span class="kpi-title">Total Inventory</span>
+        <div class="kpi-icon-pill bg-indigo-subtle">
+          <span class="material-symbols-outlined text-indigo">layers</span>
+        </div>
+      </div>
+      <div class="kpi-number">{{ totalInventoryUnits | number }}</div>
+      <div class="kpi-footer">
+        <span class="kpi-valuation">Valuation: ₹{{ totalInventoryValue | number:'1.2-2' }}</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Low Stock Items -->
+    <div class="card kpi-card border-amber">
+      <div class="kpi-header">
+        <span class="kpi-title">Low Stock Items</span>
+        <div class="kpi-icon-pill bg-amber-subtle">
+          <span class="material-symbols-outlined text-amber">warning</span>
+        </div>
+      </div>
+      <div class="kpi-number" [class.text-danger]="lowStockProducts.length > 0">{{ lowStockProducts.length }}</div>
+      <div class="kpi-footer">
+        <span class="trend-pill trend-warning" *ngIf="lowStockProducts.length > 0">
+          Reorder Required
+        </span>
+        <span class="trend-pill trend-up" *ngIf="lowStockProducts.length === 0">
+          Optimal Stock
+        </span>
+        <span class="kpi-hint">Qty &le; 4 units</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Total Warehouses -->
+    <div class="card kpi-card border-emerald">
+      <div class="kpi-header">
+        <span class="kpi-title">Warehouses</span>
+        <div class="kpi-icon-pill bg-emerald-subtle">
+          <span class="material-symbols-outlined text-emerald">warehouse</span>
+        </div>
+      </div>
+      <div class="kpi-number">{{ totalWarehouses }}</div>
+      <div class="kpi-footer">
+        <span class="trend-pill trend-up">
+          <span class="material-symbols-outlined">check_circle</span>
+          All Operational
+        </span>
+        <span class="kpi-hint">Hubs Online</span>
+      </div>
+    </div>
+
+    <!-- Card 5: Pending Orders -->
+    <div class="card kpi-card border-cyan">
+      <div class="kpi-header">
+        <span class="kpi-title">Pending Orders</span>
+        <div class="kpi-icon-pill bg-cyan-subtle">
+          <span class="material-symbols-outlined text-cyan">hourglass_top</span>
+        </div>
+      </div>
+      <div class="kpi-number">{{ pendingOrdersCount }}</div>
+      <div class="kpi-footer">
+        <span class="trend-pill trend-info">In Fulfillment</span>
+        <span class="kpi-hint">Packing & Dispatch</span>
+      </div>
+    </div>
+
+    <!-- Card 6: Completed Orders -->
+    <div class="card kpi-card border-violet">
+      <div class="kpi-header">
+        <span class="kpi-title">Completed Orders</span>
+        <div class="kpi-icon-pill bg-violet-subtle">
+          <span class="material-symbols-outlined text-violet">task_alt</span>
+        </div>
+      </div>
+      <div class="kpi-number">{{ completedOrdersCount }}</div>
+      <div class="kpi-footer">
+        <span class="trend-pill trend-up">100% Fulfilled</span>
+        <span class="kpi-hint">Shipped & Delivered</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Main Grid Sections -->
+  <div class="dashboard-grid">
+    <!-- LEFT COLUMN -->
+    <div class="dash-col-left">
+      <!-- Section A: Inventory Overview (Bar Chart by Category) -->
+      <div class="card section-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">
+              <span class="material-symbols-outlined">bar_chart</span>
+              Inventory Overview by Category
+            </h3>
+            <div class="card-subtitle">Volume distribution across active retail merchandise</div>
+          </div>
+          <a routerLink="/reports" class="btn btn-outline btn-sm">Full Analytics &rarr;</a>
+        </div>
+        <div class="card-body">
+          <div class="category-bars-list">
+            <div *ngFor="let cat of topCategories" class="cat-bar-item">
+              <div class="cat-bar-header">
+                <span class="cat-name">{{ cat.category }}</span>
+                <span class="cat-stats">
+                  <b>{{ cat.units }} units</b> ({{ cat.percentage }}%)
+                </span>
+              </div>
+              <div class="progress-bar-bg">
+                <div
+                  class="progress-bar-fill"
+                  [style.width.%]="cat.percentage"
+                  style="background-color: #2563eb;"
+                ></div>
+              </div>
+            </div>
+            <div *ngIf="topCategories.length === 0" style="text-align: center; color: var(--color-text-muted); padding: 16px;">
+              No category data available.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section C: Recent Orders -->
+      <div class="card section-card" style="margin-top: 24px;">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">
+              <span class="material-symbols-outlined">shopping_cart</span>
+              Recent Customer & Wholesale Orders
+            </h3>
+            <div class="card-subtitle">Latest fulfillment activity from central warehouses</div>
+          </div>
+          <a routerLink="/orders" class="btn btn-outline btn-sm">View All Orders</a>
+        </div>
+        <div class="table-responsive" style="border: none; border-radius: 0;">
+          <table class="enterprise-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Client / Customer</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let ord of recentOrders.slice(0, 4)">
+                <td><code>{{ ord.orderNumber }}</code></td>
+                <td><b>{{ ord.customerName }}</b></td>
+                <td>{{ ord.orderDate }}</td>
+                <td><b>₹{{ ord.totalAmount | number:'1.2-2' }}</b></td>
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.status-in-stock]="ord.status === 'Delivered'"
+                    [class.status-info]="ord.status === 'Shipped'"
+                    [class.status-low-stock]="ord.status === 'Processing' || ord.status === 'Confirmed'"
+                  >
+                    {{ ord.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="dash-col-right">
+      <!-- Section B: Stock Status Meter -->
+      <div class="card section-card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <span class="material-symbols-outlined">donut_large</span>
+            Stock Health Distribution
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="health-stack-bar">
+            <div
+              class="health-bar-segment"
+              [style.width.%]="inStockPercentage"
+              style="background-color: #10b981;"
+              title="In Stock"
+            ></div>
+            <div
+              class="health-bar-segment"
+              [style.width.%]="lowStockPercentage"
+              style="background-color: #f59e0b;"
+              title="Low Stock"
+            ></div>
+            <div
+              class="health-bar-segment"
+              [style.width.%]="outOfStockPercentage"
+              style="background-color: #ef4444;"
+              title="Out of Stock"
+            ></div>
+          </div>
+
+          <div class="health-breakdown-list">
+            <div class="health-item">
+              <div class="health-indicator">
+                <span class="dot" style="background-color: #10b981;"></span>
+                <span>In Stock (≥ 5)</span>
+              </div>
+              <b>{{ inStockProductsCount }} items ({{ inStockPercentage }}%)</b>
+            </div>
+
+            <div class="health-item">
+              <div class="health-indicator">
+                <span class="dot" style="background-color: #f59e0b;"></span>
+                <span>Low Stock (1 – 4)</span>
+              </div>
+              <b style="color: #b45309;">{{ lowStockProducts.length }} items ({{ lowStockPercentage }}%)</b>
+            </div>
+
+            <div class="health-item">
+              <div class="health-indicator">
+                <span class="dot" style="background-color: #ef4444;"></span>
+                <span>Out of Stock (0)</span>
+              </div>
+              <b style="color: #b91c1c;">{{ outOfStockProducts.length }} items ({{ outOfStockPercentage }}%)</b>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section D: Low Stock Alerts -->
+      <div class="card section-card" style="margin-top: 24px;">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title text-amber">
+              <span class="material-symbols-outlined">notification_important</span>
+              Critical Stock Alerts
+            </h3>
+            <div class="card-subtitle">Items below reorder safety thresholds</div>
+          </div>
+          <span class="badge-count" style="background-color: #fef3c7; color: #92400e;">
+            {{ lowStockProducts.length + outOfStockProducts.length }} Alerts
+          </span>
+        </div>
+        <div class="card-body" style="padding: 12px 16px;">
+          <!-- Empty alert state -->
+          <div *ngIf="lowStockProducts.length === 0 && outOfStockProducts.length === 0" class="alert-empty-box">
+            <span class="material-symbols-outlined text-emerald" style="font-size: 28px;">check_circle</span>
+            <div>
+              <b>All Catalog Items Well-Stocked!</b>
+              <div style="font-size: 12px; color: var(--color-text-muted);">No products currently need replenishment.</div>
+            </div>
+          </div>
+
+          <!-- Alert Items List -->
+          <div class="alerts-list">
+            <!-- Out of Stock items first -->
+            <div *ngFor="let item of outOfStockProducts" class="alert-card danger-alert">
+              <img
+                [src]="item.imageUrl || catalogDefaults.imagePresets[0].url"
+                [alt]="item.name"
+                class="alert-thumb"
+                (error)="onImageError($event, item)"
+              />
+              <div class="alert-info">
+                <h4 class="alert-item-name">{{ item.name }}</h4>
+                <div class="alert-sku">SKU: {{ item.sku }} | Hub: {{ item.warehouse }}</div>
+                <div class="alert-meta">
+                  <span class="status-badge status-out-stock">× Out of Stock (0)</span>
+                  <span style="font-size: 11px; color: var(--color-text-muted);">Reorder Level: {{ item.reorderLevel }}</span>
+                </div>
+              </div>
+              <a routerLink="/inventory" class="btn btn-outline btn-sm">Restock</a>
+            </div>
+
+            <!-- Low Stock items -->
+            <div *ngFor="let item of lowStockProducts" class="alert-card warning-alert">
+              <img
+                [src]="item.imageUrl || catalogDefaults.imagePresets[0].url"
+                [alt]="item.name"
+                class="alert-thumb"
+                (error)="onImageError($event, item)"
+              />
+              <div class="alert-info">
+                <h4 class="alert-item-name">{{ item.name }}</h4>
+                <div class="alert-sku">SKU: {{ item.sku }} | Hub: {{ item.warehouse }}</div>
+                <div class="alert-meta">
+                  <span class="status-badge status-low-stock">⚠ Low Stock: {{ item.quantity }} left</span>
+                  <span style="font-size: 11px; color: var(--color-text-muted);">Threshold: {{ item.reorderLevel }}</span>
+                </div>
+              </div>
+              <a routerLink="/inventory" class="btn btn-outline btn-sm">Adjust</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section E: Warehouse Regional Overview -->
+      <div class="card section-card" style="margin-top: 24px;">
+        <div class="card-header">
+          <h3 class="card-title">
+            <span class="material-symbols-outlined">location_city</span>
+            Warehouse Regional Overview
+          </h3>
+          <a routerLink="/warehouses" class="btn btn-outline btn-sm">All Hubs &rarr;</a>
+        </div>
+        <div class="card-body" style="padding: 12px 16px;">
+          <div class="mini-wh-list">
+            <div *ngFor="let wh of warehouses.slice(0, 3)" class="mini-wh-item">
+              <div class="mini-wh-header">
+                <div>
+                  <b>{{ wh.name }}</b>
+                  <div style="font-size: 11px; color: var(--color-text-muted);">{{ wh.location }}</div>
+                </div>
+                <span class="status-badge status-in-stock">{{ wh.status }}</span>
+              </div>
+              <div class="mini-wh-stats">
+                <span>SKUs: <b>{{ wh.productsCount }}</b></span>
+                <span>Units Stored: <b>{{ wh.totalUnits }}</b> / {{ wh.capacityUnits }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

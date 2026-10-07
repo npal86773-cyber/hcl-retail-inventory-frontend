@@ -1,0 +1,663 @@
+<div class="inventory-page">
+  <!-- Breadcrumbs & Header -->
+  <div class="breadcrumbs">
+    <a routerLink="/dashboard">Home</a>
+    <span class="separator">/</span>
+    <span class="current">Products</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Products Catalog</h1>
+      <p class="page-subtitle">Visual merchandise catalog, SKU specifications, pricing, and category management</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn btn-primary" (click)="openAddModal()">
+        <span class="material-symbols-outlined">add</span>
+        Add New Product
+      </button>
+
+      <div class="view-switch">
+        <button
+          type="button"
+          class="switch-btn"
+          [class.active]="viewMode === 'grid'"
+          (click)="viewMode = 'grid'"
+          title="Grid / Card View"
+        >
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+        <button
+          type="button"
+          class="switch-btn"
+          [class.active]="viewMode === 'table'"
+          (click)="viewMode = 'table'"
+          title="Table View"
+        >
+          <span class="material-symbols-outlined">view_list</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search, Filter & Sort Controls Card -->
+  <div class="filter-card card">
+    <div class="filter-grid">
+      <!-- Search Input -->
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          class="form-control search-input"
+          placeholder="Search by product name, SKU, or category..."
+          [(ngModel)]="searchTerm"
+          (input)="currentPage = 1"
+        />
+        <button *ngIf="searchTerm" (click)="searchTerm = ''; currentPage = 1" class="clear-btn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Category Filter -->
+      <div>
+        <select class="form-select" [(ngModel)]="selectedCategory" (change)="currentPage = 1">
+          <option value="All">All Categories</option>
+          <option *ngFor="let cat of catalogDefaults.categories" [value]="cat">{{ cat }}</option>
+        </select>
+      </div>
+
+      <!-- Warehouse Filter -->
+      <div>
+        <select class="form-select" [(ngModel)]="selectedWarehouse" (change)="currentPage = 1">
+          <option value="All">All Warehouses</option>
+          <option *ngFor="let wh of catalogDefaults.warehousesList" [value]="wh">{{ wh }}</option>
+        </select>
+      </div>
+
+      <!-- Stock Status Filter -->
+      <div>
+        <select class="form-select" [(ngModel)]="selectedStatus" (change)="currentPage = 1">
+          <option value="All">All Stock Levels</option>
+          <option value="In Stock">In Stock (&ge; 5)</option>
+          <option value="Low Stock">Low Stock (1 - 4)</option>
+          <option value="Out of Stock">Out of Stock (0)</option>
+        </select>
+      </div>
+
+      <!-- Sort By -->
+      <div>
+        <select class="form-select" [(ngModel)]="sortBy">
+          <option value="name_asc">Name: A to Z</option>
+          <option value="name_desc">Name: Z to A</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="qty_desc">Stock: High to Low</option>
+          <option value="qty_asc">Stock: Low to High</option>
+        </select>
+      </div>
+
+      <!-- Reset / Total Count -->
+      <div class="filter-action-col">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="resetFilters()">
+          <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span>
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Filters & Count Strip -->
+    <div class="filter-summary-row">
+      <div class="result-count">
+        Showing <b>{{ paginatedProducts.length }}</b> of <b>{{ filteredProducts.length }}</b> products
+        <span *ngIf="filteredProducts.length !== products.length" class="filter-applied-badge">
+          (Filtered from {{ products.length }} total)
+        </span>
+      </div>
+
+      <div class="quick-status-pills">
+        <span class="badge badge-success">
+          <span class="status-dot"></span> In Stock
+        </span>
+        <span class="badge badge-warning">
+          <span class="status-dot"></span> Low Stock (1-4)
+        </span>
+        <span class="badge badge-danger">
+          <span class="status-dot"></span> Out of Stock (0)
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state card">
+    <div class="spinner"></div>
+    <p>Loading enterprise product catalog...</p>
+  </div>
+
+  <!-- GRID VIEW -->
+  <div *ngIf="!isLoading && viewMode === 'grid'" class="product-grid">
+    <div *ngFor="let p of paginatedProducts" class="product-card card">
+      <div class="product-img-wrap" (click)="openDetails(p)">
+        <img
+          [src]="p.imageUrl || getDefaultImageUrl()"
+          [alt]="p.name"
+          class="product-img"
+          (error)="onImageError($event, p)"
+          loading="lazy"
+        />
+        <span class="category-chip">{{ p.category }}</span>
+      </div>
+
+      <div class="product-card-body">
+        <div class="sku-row">
+          <span class="sku-tag"><code>{{ p.sku }}</code></span>
+          <span class="warehouse-tag">
+            <span class="material-symbols-outlined" style="font-size: 13px;">warehouse</span>
+            {{ p.warehouse }}
+          </span>
+        </div>
+
+        <h3 class="product-title" (click)="openDetails(p)">{{ p.name }}</h3>
+
+        <div class="pricing-stock-row">
+          <div class="price-box">
+            <span class="price-val">₹{{ p.price | number:'1.2-2' }}</span>
+            <span *ngIf="p.costPrice" class="cost-val">Cost: ₹{{ p.costPrice | number:'1.0-0' }}</span>
+          </div>
+
+          <div class="stock-badge-box">
+            <span
+              class="status-badge"
+              [class.status-in-stock]="(p.quantity || 0) >= 5"
+              [class.status-low-stock]="(p.quantity || 0) >= 1 && (p.quantity || 0) <= 4"
+              [class.status-out-stock]="(p.quantity || 0) === 0"
+            >
+              <span class="material-symbols-outlined" style="font-size: 14px;">
+                {{ (p.quantity || 0) >= 5 ? 'check_circle' : ((p.quantity || 0) > 0 ? 'warning' : 'cancel') }}
+              </span>
+              {{ (p.quantity || 0) >= 5 ? 'In Stock (' + p.quantity + ')' : ((p.quantity || 0) > 0 ? 'Low (' + p.quantity + ')' : 'Out of Stock') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="supplier-row">
+          <span class="supplier-name">
+            <span class="material-symbols-outlined" style="font-size: 14px;">local_shipping</span>
+            {{ p.supplier }}
+          </span>
+        </div>
+      </div>
+
+      <div class="product-card-footer">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="openDetails(p)">
+          <span class="material-symbols-outlined" style="font-size: 16px;">visibility</span>
+          View
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="openEditModal(p)">
+          <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+          Edit
+        </button>
+        <button type="button" class="btn btn-danger-outline btn-sm" (click)="deleteProduct(p)" title="Delete Product">
+          <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty Filter Results -->
+    <div *ngIf="filteredProducts.length === 0" class="empty-state card">
+      <span class="material-symbols-outlined empty-icon">inventory_2</span>
+      <h3>No Products Found</h3>
+      <p>No products match your current search or filter criteria.</p>
+      <button type="button" class="btn btn-primary" (click)="resetFilters()">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- TABLE VIEW -->
+  <div *ngIf="!isLoading && viewMode === 'table'" class="table-card card">
+    <table class="table" *ngIf="filteredProducts.length > 0">
+      <thead>
+        <tr>
+          <th style="width: 56px;">Item</th>
+          <th>Product Details</th>
+          <th>SKU</th>
+          <th>Category</th>
+          <th>Warehouse Hub</th>
+          <th style="text-align: right;">Unit Price</th>
+          <th style="text-align: center;">Stock Qty</th>
+          <th>Status</th>
+          <th style="text-align: right; width: 170px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of paginatedProducts">
+          <td>
+            <img
+              [src]="p.imageUrl || getDefaultImageUrl()"
+              [alt]="p.name"
+              class="table-thumb"
+              (error)="onImageError($event, p)"
+            />
+          </td>
+          <td>
+            <a href="javascript:void(0)" class="table-product-link" (click)="openDetails(p)">
+              <b>{{ p.name }}</b>
+            </a>
+            <div style="font-size: 11px; color: var(--color-text-muted);">{{ p.supplier }}</div>
+          </td>
+          <td><code>{{ p.sku }}</code></td>
+          <td><span class="category-chip">{{ p.category }}</span></td>
+          <td>
+            <span style="display: flex; align-items: center; gap: 4px; font-size: 12px;">
+              <span class="material-symbols-outlined" style="font-size: 14px; color: var(--color-text-subtle);">location_on</span>
+              {{ p.warehouse }}
+            </span>
+          </td>
+          <td style="text-align: right; font-weight: 600;">₹{{ p.price | number:'1.2-2' }}</td>
+          <td style="text-align: center;">
+            <span class="qty-pill" [class.qty-zero]="(p.quantity || 0) === 0" [class.qty-low]="(p.quantity || 0) > 0 && (p.quantity || 0) < 5">
+              {{ p.quantity }}
+            </span>
+          </td>
+          <td>
+            <span
+              class="status-badge"
+              [class.status-in-stock]="(p.quantity || 0) >= 5"
+              [class.status-low-stock]="(p.quantity || 0) >= 1 && (p.quantity || 0) <= 4"
+              [class.status-out-stock]="(p.quantity || 0) === 0"
+            >
+              {{ (p.quantity || 0) >= 5 ? 'In Stock' : ((p.quantity || 0) > 0 ? 'Low Stock' : 'Out of Stock') }}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <div class="table-actions">
+              <button type="button" class="btn btn-icon-only btn-secondary" (click)="openDetails(p)" title="Details">
+                <span class="material-symbols-outlined">visibility</span>
+              </button>
+              <button type="button" class="btn btn-icon-only btn-secondary" (click)="openEditModal(p)" title="Edit">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button type="button" class="btn btn-icon-only btn-danger-outline" (click)="deleteProduct(p)" title="Delete">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Empty Table State -->
+    <div *ngIf="filteredProducts.length === 0" class="empty-state" style="padding: 40px;">
+      <span class="material-symbols-outlined empty-icon">inventory_2</span>
+      <h3>No Products Found</h3>
+      <p>Try searching with another keyword or resetting the filters.</p>
+      <button type="button" class="btn btn-primary" (click)="resetFilters()">Reset All Filters</button>
+    </div>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination-card" *ngIf="!isLoading && totalPages > 1">
+    <div class="page-info">
+      Page <b>{{ currentPage }}</b> of <b>{{ totalPages }}</b>
+    </div>
+    <div class="pagination-buttons">
+      <button
+        type="button"
+        class="page-btn"
+        [disabled]="currentPage === 1"
+        (click)="goToPage(currentPage - 1)"
+      >
+        <span class="material-symbols-outlined">chevron_left</span>
+        Prev
+      </button>
+
+      <button
+        *ngFor="let page of pageNumbers"
+        type="button"
+        class="page-number-btn"
+        [class.active]="page === currentPage"
+        (click)="goToPage(page)"
+      >
+        {{ page }}
+      </button>
+
+      <button
+        type="button"
+        class="page-btn"
+        [disabled]="currentPage === totalPages"
+        (click)="goToPage(currentPage + 1)"
+      >
+        Next
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       ADD / EDIT PRODUCT MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" *ngIf="isFormModalOpen" (click)="closeFormModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="color: var(--color-primary);">
+            {{ isEditing ? 'edit_note' : 'add_box' }}
+          </span>
+          <h2 class="modal-title">{{ isEditing ? 'Edit Product Details' : 'Add New Product to Catalog' }}</h2>
+        </div>
+        <button type="button" class="btn btn-icon-only btn-secondary" (click)="closeFormModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <form (ngSubmit)="saveProduct()">
+        <div class="modal-body">
+          <div *ngIf="formError" class="alert-box alert-danger">
+            <span class="material-symbols-outlined">error</span>
+            <span>{{ formError }}</span>
+          </div>
+
+          <!-- Section 1: Product Information -->
+          <div class="form-section">
+            <h4 class="form-section-title">
+              <span class="material-symbols-outlined">info</span>
+              Product Information
+            </h4>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label required">Product Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="e.g. Ergonomic Mechanical Keyboard"
+                  [(ngModel)]="productForm.name"
+                  name="name"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">SKU Code</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="e.g. KB-RGB-09"
+                  [(ngModel)]="productForm.sku"
+                  name="sku"
+                  required
+                />
+                <span class="field-hint">Must be unique across all inventory items</span>
+              </div>
+            </div>
+
+            <div class="form-grid-2" style="margin-top: 12px;">
+              <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" [(ngModel)]="productForm.category" name="category">
+                  <option *ngFor="let cat of catalogDefaults.categories" [value]="cat">{{ cat }}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Product Image URL</label>
+                <input
+                  type="url"
+                  class="form-control"
+                  placeholder="https://images.unsplash.com/..."
+                  [(ngModel)]="productForm.imageUrl"
+                  name="imageUrl"
+                />
+              </div>
+            </div>
+
+            <!-- Image Presets Selector & Live Preview -->
+            <div class="image-preset-picker">
+              <span class="preset-label">Quick Image Presets:</span>
+              <div class="preset-chips">
+                <button
+                  *ngFor="let preset of catalogDefaults.imagePresets"
+                  type="button"
+                  class="chip-btn"
+                  [class.active]="productForm.imageUrl === preset.url"
+                  (click)="selectPresetImage(preset.url)"
+                >
+                  {{ preset.label }}
+                </button>
+              </div>
+
+              <!-- Preview thumbnail -->
+              <div class="preset-preview" *ngIf="productForm.imageUrl">
+                <img [src]="productForm.imageUrl" alt="Preview" class="preview-img" (error)="onImageError($event, productForm)" />
+                <span style="font-size: 11px; color: var(--color-text-muted);">Image Preview</span>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 12px;">
+              <label class="form-label">Item Description</label>
+              <textarea
+                class="form-control"
+                rows="2"
+                placeholder="Key specifications, warranty details, and retail packaging information..."
+                [(ngModel)]="productForm.description"
+                name="description"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Section 2: Pricing & Stock Parameters -->
+          <div class="form-section">
+            <h4 class="form-section-title">
+              <span class="material-symbols-outlined">payments</span>
+              Pricing & Inventory
+            </h4>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label required">Selling Price (₹)</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  placeholder="0.00"
+                  [(ngModel)]="productForm.price"
+                  name="price"
+                  min="0"
+                  step="any"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Cost Price (₹)</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  placeholder="0.00"
+                  [(ngModel)]="productForm.costPrice"
+                  name="costPrice"
+                  min="0"
+                  step="any"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label required">Initial Quantity</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  placeholder="0"
+                  [(ngModel)]="productForm.quantity"
+                  name="quantity"
+                  min="0"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-grid-3" style="margin-top: 12px;">
+              <div class="form-group">
+                <label class="form-label">Reorder Threshold</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  placeholder="5"
+                  [(ngModel)]="productForm.reorderLevel"
+                  name="reorderLevel"
+                  min="1"
+                />
+                <span class="field-hint">Triggers low-stock warning</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Assigned Warehouse</label>
+                <select class="form-select" [(ngModel)]="productForm.warehouse" name="warehouse">
+                  <option *ngFor="let wh of catalogDefaults.warehousesList" [value]="wh">{{ wh }}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Primary Supplier</label>
+                <select class="form-select" [(ngModel)]="productForm.supplier" name="supplier">
+                  <option *ngFor="let sup of catalogDefaults.suppliersList" [value]="sup">{{ sup }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeFormModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span class="material-symbols-outlined">save</span>
+            {{ isEditing ? 'Save Changes' : 'Create Product' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       PRODUCT DETAILS INSPECTION MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" *ngIf="selectedProductDetails" (click)="closeDetails()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="color: var(--color-primary);">visibility</span>
+          <h2 class="modal-title">Product Specifications & Overview</h2>
+        </div>
+        <button type="button" class="btn btn-icon-only btn-secondary" (click)="closeDetails()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="product-details-container">
+          <!-- Left: Big Image -->
+          <div class="details-image-box">
+            <img
+              [src]="selectedProductDetails.imageUrl || getDefaultImageUrl()"
+              [alt]="selectedProductDetails.name"
+              class="details-big-img"
+              (error)="onImageError($event, selectedProductDetails)"
+            />
+            <div style="margin-top: 10px; text-align: center;">
+              <span
+                class="status-badge"
+                [class.status-in-stock]="(selectedProductDetails.quantity || 0) >= 5"
+                [class.status-low-stock]="(selectedProductDetails.quantity || 0) >= 1 && (selectedProductDetails.quantity || 0) <= 4"
+                [class.status-out-stock]="(selectedProductDetails.quantity || 0) === 0"
+              >
+                {{ (selectedProductDetails.quantity || 0) >= 5 ? 'In Stock' : ((selectedProductDetails.quantity || 0) > 0 ? 'Low Stock' : 'Out of Stock') }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Right: Metadata & Specs -->
+          <div class="details-info-box">
+            <span class="category-chip" style="font-size: 12px;">{{ selectedProductDetails.category }}</span>
+            <h2 class="details-title">{{ selectedProductDetails.name }}</h2>
+            <div class="details-sku-row">
+              <span>SKU: <code>{{ selectedProductDetails.sku }}</code></span>
+              <span class="details-dot">•</span>
+              <span>Supplier: <b>{{ selectedProductDetails.supplier }}</b></span>
+            </div>
+
+            <div class="details-pricing-card">
+              <div class="price-item">
+                <span class="price-item-label">Retail Selling Price</span>
+                <span class="price-item-val" style="color: var(--color-primary);">₹{{ selectedProductDetails.price | number:'1.2-2' }}</span>
+              </div>
+              <div class="price-item" *ngIf="selectedProductDetails.costPrice">
+                <span class="price-item-label">Procurement Cost</span>
+                <span class="price-item-val" style="color: var(--color-text-muted);">₹{{ selectedProductDetails.costPrice | number:'1.2-2' }}</span>
+              </div>
+              <div class="price-item">
+                <span class="price-item-label">Total Stock Quantity</span>
+                <span class="price-item-val" style="font-weight: 700;">{{ selectedProductDetails.quantity }} units</span>
+              </div>
+            </div>
+
+            <p class="details-description" *ngIf="selectedProductDetails.description">
+              {{ selectedProductDetails.description }}
+            </p>
+
+            <!-- Regional Warehouse Breakdown Table -->
+            <div class="warehouse-allocation-box">
+              <h4 class="allocation-title">
+                <span class="material-symbols-outlined" style="font-size: 16px;">domain</span>
+                Estimated Warehouse Stock Allocation
+              </h4>
+              <table class="allocation-table">
+                <thead>
+                  <tr>
+                    <th>Warehouse Hub</th>
+                    <th style="text-align: right;">Quantity</th>
+                    <th style="text-align: right;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let wh of getWarehouseBreakdown(selectedProductDetails)">
+                    <td>{{ wh.warehouse }}</td>
+                    <td style="text-align: right;"><b>{{ wh.qty }}</b> units</td>
+                    <td style="text-align: right;">
+                      <span
+                        class="badge"
+                        [class.badge-success]="wh.status === 'In Stock'"
+                        [class.badge-warning]="wh.status === 'Low Stock'"
+                        [class.badge-danger]="wh.status === 'Out of Stock'"
+                      >
+                        {{ wh.status }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDetails()">Close</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="closeDetails(); openEditModal(selectedProductDetails)"
+        >
+          <span class="material-symbols-outlined">edit</span>
+          Edit Product
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-container" *ngIf="toastMessage">
+    <div class="toast" [class.toast-error]="toastType === 'error'">
+      <span class="material-symbols-outlined">
+        {{ toastType === 'error' ? 'error' : 'check_circle' }}
+      </span>
+      <span>{{ toastMessage }}</span>
+    </div>
+  </div>
+</div>

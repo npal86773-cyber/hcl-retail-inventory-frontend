@@ -1,0 +1,236 @@
+<div class="suppliers-page">
+  <!-- Breadcrumbs & Header -->
+  <div class="breadcrumbs">
+    <a routerLink="/dashboard">Home</a>
+    <span class="separator">/</span>
+    <span class="current">Suppliers & Vendors</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Vendor & Supplier Directory</h1>
+      <p class="page-subtitle">Authorized retail manufacturers, component distributors, and procurement partners</p>
+    </div>
+    <div class="header-actions">
+      <div class="view-switch">
+        <button
+          type="button"
+          class="switch-btn"
+          [class.active]="viewMode === 'table'"
+          (click)="viewMode = 'table'"
+          title="Table View"
+        >
+          <span class="material-symbols-outlined">view_list</span>
+        </button>
+        <button
+          type="button"
+          class="switch-btn"
+          [class.active]="viewMode === 'grid'"
+          (click)="viewMode = 'grid'"
+          title="Grid View"
+        >
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Card -->
+  <div class="filter-card card">
+    <div class="filter-toolbar">
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          class="form-control search-input"
+          placeholder="Search supplier, contact, category, or email..."
+          [(ngModel)]="searchTerm"
+        />
+        <button *ngIf="searchTerm" (click)="searchTerm = ''" class="clear-btn">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="filter-selects">
+        <select class="form-select filter-select" [(ngModel)]="selectedStatus">
+          <option value="All">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Preferred">Preferred Partner</option>
+          <option value="Under Review">Under Review</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'" class="table-responsive card">
+    <table class="enterprise-table">
+      <thead>
+        <tr>
+          <th>Supplier Name</th>
+          <th>Specialization</th>
+          <th>Contact Person</th>
+          <th>Contact Info</th>
+          <th>Products Supplied</th>
+          <th>Quality Rating</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of filteredSuppliers">
+          <td>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="supplier-avatar">
+                {{ s.name.charAt(0) }}
+              </div>
+              <div>
+                <b>{{ s.name }}</b>
+                <div style="font-size: 11px; color: var(--color-text-muted);">ID: {{ s.id }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ s.category }}</td>
+          <td><b>{{ s.contactPerson }}</b></td>
+          <td>
+            <div style="font-size: 12px;">{{ s.email }}</div>
+            <div style="font-size: 11px; color: var(--color-text-muted);">{{ s.phone }}</div>
+          </td>
+          <td><b>{{ s.productsSupplied }}</b> items</td>
+          <td>
+            <span class="rating-badge">★ {{ s.rating }}</span>
+          </td>
+          <td>
+            <span
+              class="status-badge"
+              [class.status-in-stock]="s.status === 'Preferred'"
+              [class.status-info]="s.status === 'Active'"
+              [class.status-low-stock]="s.status === 'Under Review'"
+            >
+              {{ s.status }}
+            </span>
+          </td>
+          <td>
+            <button type="button" class="btn btn-outline btn-sm" (click)="openDetails(s)">
+              View Details
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Grid View -->
+  <div *ngIf="viewMode === 'grid'" class="supplier-grid">
+    <div *ngFor="let s of filteredSuppliers" class="supplier-card card">
+      <div class="sup-card-header">
+        <div class="supplier-avatar large">
+          {{ s.name.charAt(0) }}
+        </div>
+        <div>
+          <h3 class="sup-title">{{ s.name }}</h3>
+          <span class="sup-cat">{{ s.category }}</span>
+        </div>
+        <span
+          class="status-badge"
+          [class.status-in-stock]="s.status === 'Preferred'"
+          [class.status-info]="s.status === 'Active'"
+        >
+          {{ s.status }}
+        </span>
+      </div>
+
+      <div class="sup-card-body">
+        <div class="sup-info-line">
+          <span class="material-symbols-outlined">person</span>
+          <span>Contact: <b>{{ s.contactPerson }}</b></span>
+        </div>
+        <div class="sup-info-line">
+          <span class="material-symbols-outlined">email</span>
+          <span>{{ s.email }}</span>
+        </div>
+        <div class="sup-info-line">
+          <span class="material-symbols-outlined">phone</span>
+          <span>{{ s.phone }}</span>
+        </div>
+
+        <div class="sup-metrics">
+          <div class="sup-metric">
+            <span class="metric-label">Supplied Items</span>
+            <span class="metric-val">{{ s.productsSupplied }}</span>
+          </div>
+          <div class="sup-metric">
+            <span class="metric-label">Lead Time</span>
+            <span class="metric-val">{{ s.leadTimeDays }} Days</span>
+          </div>
+          <div class="sup-metric">
+            <span class="metric-label">Score</span>
+            <span class="metric-val text-warning">★ {{ s.rating }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sup-card-footer">
+        <button type="button" class="btn btn-outline btn-sm w-100" (click)="openDetails(s)">
+          Procurement Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplier Details Modal -->
+  <div *ngIf="selectedSupplier" class="modal-backdrop" (click)="closeDetails()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <span class="material-symbols-outlined">handshake</span>
+          {{ selectedSupplier.name }}
+        </h2>
+        <button type="button" class="btn btn-icon-only btn-secondary" (click)="closeDetails()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Vendor ID</span>
+            <span class="detail-value"><code>{{ selectedSupplier.id }}</code></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">
+              <span class="status-badge status-in-stock">{{ selectedSupplier.status }}</span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Account Lead</span>
+            <span class="detail-value">{{ selectedSupplier.contactPerson }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Average Lead Time</span>
+            <span class="detail-value">{{ selectedSupplier.leadTimeDays }} Business Days</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Corporate Email</span>
+            <span class="detail-value">{{ selectedSupplier.email }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Direct Telephone</span>
+            <span class="detail-value">{{ selectedSupplier.phone }}</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <h4 style="font-size: 14px; margin-bottom: 8px;">Compliance & Agreement</h4>
+          <p style="color: var(--color-text-muted); font-size: 13px; line-height: 1.6;">
+            Verified supplier under corporate service level agreement (SLA). Products supplied undergo automated barcode validation upon receiving at central warehouse locations.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDetails()">Close</button>
+        <a routerLink="/inventory" class="btn btn-primary" (click)="closeDetails()">View Products in Inventory</a>
+      </div>
+    </div>
+  </div>
+</div>

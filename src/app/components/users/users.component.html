@@ -1,0 +1,59 @@
+<div class="users-page">
+  <!-- Breadcrumbs & Header -->
+  <div class="breadcrumbs">
+    <a routerLink="/dashboard">Home</a>
+    <span class="separator">/</span>
+    <span class="current">Access & System Users</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">User Directory & Roles</h1>
+      <p class="page-subtitle">Role-based access control, operator identity management, and audit logs</p>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="table-responsive card">
+    <table class="enterprise-table">
+      <thead>
+        <tr>
+          <th>User ID</th>
+          <th>Operator Name</th>
+          <th>Corporate Email</th>
+          <th>Designated Role</th>
+          <th>Department</th>
+          <th>Status</th>
+          <th>Last Active</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let u of users">
+          <td><code>{{ u.id }}</code></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="user-avatar-circle">
+                {{ u.name.charAt(0) }}
+              </div>
+              <b>{{ u.name }}</b>
+            </div>
+          </td>
+          <td>{{ u.email }}</td>
+          <td>
+            <span class="role-pill" [class.admin]="u.role === 'System Administrator'">
+              {{ u.role }}
+            </span>
+          </td>
+          <td>{{ u.department }}</td>
+          <td>
+            <span class="status-badge status-in-stock">
+              <span class="material-symbols-outlined">check_circle</span>
+              {{ u.status }}
+            </span>
+          </td>
+          <td style="color: var(--color-text-muted); font-size: 12.5px;">{{ u.lastLogin }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
